@@ -80,6 +80,10 @@ extern UART_HandleTypeDef huart2;
 #define ZG_OFFS_USRH         0x07
 #define ZG_OFFS_USRL         0x08
 
+#define MAG_X_BIAS           15
+#define MAG_Y_BIAS           100
+#define MAG_Z_BIAS           -30
+
 typedef enum {
 	_gyro_250dps,
 	_gyro_500dps,
