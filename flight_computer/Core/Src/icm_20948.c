@@ -73,6 +73,8 @@ void icm_20948_read_reg(user_bank ub, uint8_t address, uint8_t *data) {
 }
 
 void icm_20948_read_data(icm_20948_data *data) {
+	sel_user_bank(_bank0);
+
 	uint8_t rx_data[22];
 	uint8_t temp_data = 0x80 | ACCEL_XOUT_H; // 0x80 is write instruction
 
@@ -89,9 +91,9 @@ void icm_20948_read_data(icm_20948_data *data) {
 	data -> y_gyro = (int16_t) (rx_data[8] << 8)  | rx_data[9];
 	data -> z_gyro = (int16_t) (rx_data[10] << 8) | rx_data[11];
 
-	data -> x_magnet = (int16_t) (rx_data[15] << 8 | rx_data[14]);
-	data -> y_magnet = (int16_t) (rx_data[17] << 8 | rx_data[16]);
-	data -> z_magnet = (int16_t) (rx_data[19] << 8 | rx_data[18]);
+	data -> x_magnet = ((int16_t) (rx_data[15] << 8 | rx_data[14])) - MAG_X_BIAS;
+	data -> y_magnet = ((int16_t) (rx_data[17] << 8 | rx_data[16])) - MAG_Y_BIAS;
+	data -> z_magnet = ((int16_t) (rx_data[19] << 8 | rx_data[18])) - MAG_Z_BIAS;
 
 	deactivate_imu();
 }
