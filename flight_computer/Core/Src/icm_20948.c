@@ -22,7 +22,7 @@ static void sel_user_bank(user_bank ub) {
 
 void remove_gyro_bias() {
 	uint8_t samples = 200;
-	icm_20948_data data;
+	icm_20948_data_t data;
 
 	int16_t x_gyro_bias, y_gyro_bias, z_gyro_bias;
 	int32_t x_bias = 0;
@@ -72,7 +72,7 @@ void icm_20948_read_reg(user_bank ub, uint8_t address, uint8_t *data) {
 	deactivate_imu();
 }
 
-void icm_20948_read_data(icm_20948_data *data) {
+void icm_20948_read_data(icm_20948_data_t *data) {
 	sel_user_bank(_bank0);
 
 	uint8_t rx_data[22];
@@ -97,6 +97,25 @@ void icm_20948_read_data(icm_20948_data *data) {
 
 	deactivate_imu();
 }
+
+void icm_20948_read_scaled_data(icm_20948_scaled_data_t *scaled_data, icm_20948_data_t *data) {
+	float accel_lsb_per_g = 16384 / (1 << ACCEL_RANGE_VALUE);
+	float gyro_lsb_per_dps = 131 / (1 << GYRO_RANGE_VALUE);
+	float mag_scaling = 0.15;
+
+	scaled_data->x_accel = data->x_accel / accel_lsb_per_g;
+	scaled_data->y_accel = data->y_accel / accel_lsb_per_g;
+	scaled_data->z_accel = data->z_accel / accel_lsb_per_g;
+
+	scaled_data->x_gyro = data->x_gyro / gyro_lsb_per_dps;
+	scaled_data->y_gyro = data->y_gyro / gyro_lsb_per_dps;
+	scaled_data->z_gyro = data->z_gyro / gyro_lsb_per_dps;
+
+	scaled_data->x_magnet = data->x_magnet * mag_scaling;
+	scaled_data->y_magnet = data->y_magnet * mag_scaling;
+	scaled_data->z_magnet = data->z_magnet * mag_scaling;
+}
+
 
 static void ak_09916_write_reg(uint8_t reg, uint8_t data) {
 	icm_20948_write_reg(_bank3, I2C_SLV0_ADDR, AK_09916_ADDRESS);
