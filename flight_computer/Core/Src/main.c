@@ -24,6 +24,7 @@
 #include "stdio.h"
 #include "icm_20948.h"
 #include <math.h>
+#include "quaternion.h"
 
 /* USER CODE END Includes */
 
@@ -68,11 +69,18 @@ static void MX_TIM2_Init(void);
 icm_20948_data_t imu_data;
 icm_20948_scaled_data_t imu_scaled_data;
 
+const float alpha = 0.02f;
+
+Quaternion quat_current;
+Quaternion quat_gyro;
+Quaternion quat_accel;
+
 float pitch;
 float roll;
 float yaw;
 
 volatile uint32_t system_time_ms = 0;
+volatile uint32_t last_time_ms = 0;
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     if (htim->Instance == TIM2) {
@@ -118,6 +126,11 @@ int main(void)
   icm_20948_init();
   HAL_TIM_Base_Start_IT(&htim2);
 
+  quat_current.w = 1.0f;
+  quat_current.x = 0.0f;
+  quat_current.y = 0.0f;
+  quat_current.z = 0.0f;
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -127,11 +140,82 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if (system_time_ms - last_time_ms <= 5) continue;
+
+	  float dt = (system_time_ms - last_time_ms) / 1000.0f;
+	  last_time_ms = system_time_ms;
+
 	  icm_20948_read_data(&imu_data);
 	  icm_20948_read_scaled_data(&imu_scaled_data, &imu_data);
 
+	  Quaternion q_dot = quat_derivative(quat_current, imu_scaled_data.x_gyro, imu_scaled_data.y_gyro, imu_scaled_data.z_gyro);
+	  quat_gyro = quat_add(quat_current, quat_multiply_scalar(q_dot, dt));
+	  quat_normalize(&quat_gyro);
+
+	  float roll_intermediate = atan2f(imu_scaled_data.y_accel, imu_scaled_data.z_accel);
+
+	  float pitch_intermediate = atan2f(-imu_scaled_data.x_accel,
+	      sqrtf(imu_scaled_data.y_accel * imu_scaled_data.y_accel + imu_scaled_data.z_accel * imu_scaled_data.z_accel)
+	  );
 
 
+	  /* Magnetometer */
+	  float mx = imu_scaled_data.x_magnet;
+	  float my = imu_scaled_data.y_magnet;
+	  float mz = imu_scaled_data.z_magnet;
+
+
+	  /* Tilt compensation */
+	  float cr_mag = cosf(roll_intermediate);
+	  float sr_mag = sinf(roll_intermediate);
+
+	  float cp_mag = cosf(pitch_intermediate);
+	  float sp_mag = sinf(pitch_intermediate);
+
+	  float mag_x_horizontal = mx * cp_mag + mz * sp_mag;
+	  float mag_y_horizontal = mx * sr_mag * sp_mag + my * cr_mag - mz * sr_mag * cp_mag;
+
+	  /* Magnetic heading */
+	  float yaw_intermediate = atan2f(-mag_y_horizontal, mag_x_horizontal);
+
+	  float cr = cosf(roll_intermediate * 0.5f);
+	  float sr = sinf(roll_intermediate * 0.5f);
+
+	  float cp = cosf(pitch_intermediate * 0.5f);
+	  float sp = sinf(pitch_intermediate * 0.5f);
+
+	  float cy = cosf(yaw_intermediate * 0.5f);
+	  float sy = sinf(yaw_intermediate * 0.5f);
+
+	  quat_accel.w = cr*cp*cy + sr*sp*sy;
+	  quat_accel.x = sr*cp*cy - cr*sp*sy;
+	  quat_accel.y = cr*sp*cy + sr*cp*sy;
+	  quat_accel.z = cr*cp*sy - sr*sp*cy;
+
+	  quat_current.w = (1.0f - alpha) * quat_gyro.w + alpha * quat_accel.w;
+	  quat_current.x = (1.0f - alpha) * quat_gyro.x + alpha * quat_accel.x;
+	  quat_current.y = (1.0f - alpha) * quat_gyro.y + alpha * quat_accel.y;
+	  quat_current.z = (1.0f - alpha) * quat_gyro.z + alpha * quat_accel.z;
+
+	  quat_normalize(&quat_current);
+
+	  roll = atan2f(2.0f * (quat_current.w * quat_current.x + quat_current.y * quat_current.z), 1.0f - 2.0f * (quat_current.x * quat_current.x + quat_current.y * quat_current.y));
+	  float sin_pitch = 2.0f * (quat_current.w * quat_current.y - quat_current.z * quat_current.x);
+	  if (sin_pitch > 1.0f)
+	      sin_pitch = 1.0f;
+	  else if (sin_pitch < -1.0f)
+	      sin_pitch = -1.0f;
+
+	  if (fabsf(sin_pitch) >= 1.0f)
+	      pitch = copysignf(M_PI / 2.0f, sin_pitch); // Gimbal lock
+	  else
+	      pitch = asinf(sin_pitch);
+
+	  yaw = atan2f(2.0f * (quat_current.w * quat_current.z + quat_current.x * quat_current.y), 1.0f - 2.0f * (quat_current.y * quat_current.y + quat_current.z * quat_current.z));
+
+	  roll *= 180.0f / M_PI;
+	  pitch *= 180.0f / M_PI;
+	  yaw *= 180.0f / M_PI;
   }
   /* USER CODE END 3 */
 }
