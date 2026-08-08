@@ -36,3 +36,30 @@ Quaternion quat_derivative(const Quaternion q, float gx, float gy, float gz) {
 
 	return qDot;
 }
+
+Quaternion quat_multiply_scalar(const Quaternion q, float scalar) {
+	Quaternion new_q;
+
+	new_q.w = q.w * scalar;
+	new_q.x = q.x * scalar;
+	new_q.y = q.y * scalar;
+	new_q.z = q.z * scalar;
+
+	return new_q;
+}
+
+Quaternion quat_add(const Quaternion a, const Quaternion b) {
+	Quaternion sum;
+
+	sum.w = a.w + b.w;
+	sum.x = a.x + b.x;
+	sum.y = a.y + b.y;
+	sum.z = a.z + b.z;
+
+	return sum;
+}
+
+Quaternion quat_sqr(const Quaternion q) {
+	return quat_multiply(q, q);
+}
+
