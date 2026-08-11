@@ -31,8 +31,8 @@ extern SPI_HandleTypeDef hspi1;
 extern UART_HandleTypeDef huart2;
 
 #define IMU_SPI             hspi1
-#define IMU_CS_PORT         SPI1_CS_GPIO_Port
-#define IMU_CS_PIN          SPI1_CS_Pin
+#define IMU_CS_PORT         SPI1_IMU_CS_GPIO_Port
+#define IMU_CS_PIN          SPI1_IMU_CS_Pin
 #define GYRO_RANGE_VALUE    _gyro_250dps
 #define ACCEL_RANGE_VALUE   _accel_2g
 
