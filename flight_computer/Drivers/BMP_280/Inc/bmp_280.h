@@ -35,7 +35,7 @@ extern SPI_HandleTypeDef hspi1;
 #define POWER_MODE           _normal
 
 #define FILTER_COEFF         _coeff_4
-#define STANDBY_TIME_MS      _125
+#define STANDBY_TIME_MS      _0p5
 
 #define ID                   0xd0
 #define RESET                0xe0
