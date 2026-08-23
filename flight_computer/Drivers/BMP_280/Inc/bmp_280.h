@@ -4,8 +4,8 @@
 #include <main.h>
 
 typedef struct {
-	int32_t temp;
-	int32_t press;
+	int32_t temp;  // 1/100 deg C (e.g. 2508 = 25.08 deg C)
+	int32_t press; // 1/256 Pa    (e.g. 256000 = 1000 Pa)
 } bmp_280_data_t;
 
 typedef struct {
@@ -99,5 +99,7 @@ void bmp_280_init();
 void bmp_280_read_reg(uint8_t address, uint8_t *data);
 void bmp_280_write_reg(uint8_t reg, uint8_t data);
 void bmp_280_read_data(bmp_280_data_t *data);
+void bmp_280_calibrate_ground();
+float bmp_280_get_relative_altitude(const bmp_280_data_t *data);
 
 #endif /* BMP_280_INC_BMP_280_H_ */

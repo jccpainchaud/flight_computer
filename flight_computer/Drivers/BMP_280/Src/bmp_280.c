@@ -1,6 +1,8 @@
 #include "bmp_280.h"
+#include <math.h>
 
 static bmp_280_calib_t calib;
+static float ground_pressure_pa = 0.0f;
 
 static void activate_baro() {
 	HAL_GPIO_WritePin(BARO_CS_PORT, BARO_CS_PIN, GPIO_PIN_RESET); // CS pin pulled low to signal start of communication
@@ -20,8 +22,10 @@ void bmp_280_read_reg(uint8_t address, uint8_t *data) {
 }
 
 void bmp_280_write_reg(uint8_t reg, uint8_t data) {
+	uint8_t write_addr = reg & 0x7F; // force bit7 = 0 for write
+
 	activate_baro();
-	HAL_SPI_Transmit(&BARO_SPI, &reg, 1, 100);
+	HAL_SPI_Transmit(&BARO_SPI, &write_addr, 1, 100);
 	HAL_SPI_Transmit(&BARO_SPI, &data, 1, 100);
 	deactivate_baro();
 }
@@ -60,10 +64,11 @@ void bmp_280_init() {
 	temp_data = (STANDBY_TIME_MS << 5) | (FILTER_COEFF << 2);
 	bmp_280_write_reg(CONFIG, temp_data);
 
-	temp_data = (PRESS_OVERSAMPLING << 5) | (TEMP_OVERSAMPLING << 2) | POWER_MODE;
+	temp_data = (TEMP_OVERSAMPLING << 5) | (PRESS_OVERSAMPLING << 2) | POWER_MODE;
 	bmp_280_write_reg(CTRL_MEAS, temp_data);
 
 	HAL_Delay(10);
+	bmp_280_calibrate_ground();
 
 }
 
@@ -118,5 +123,24 @@ void bmp_280_read_data(bmp_280_data_t *data) {
 	data->press = pressure;
 }
 
+void bmp_280_calibrate_ground() {
+	bmp_280_data_t data;
 
+	int samples = 20;
+	uint32_t sum = 0;
+
+	for (int i = 0; i < 20; i++) {
+		bmp_280_read_data(&data);
+		sum += data.press;
+		HAL_Delay(2);
+	}
+
+	ground_pressure_pa = (sum / (float)samples) / 256.0f;
+}
+
+float bmp_280_get_relative_altitude(const bmp_280_data_t *data) {
+	float pressure_pa = (float)data->press / 256.0f;
+
+	return 44330.0f * (1.0f - powf(pressure_pa / ground_pressure_pa, 1.0f / 5.255f));
+}
 
