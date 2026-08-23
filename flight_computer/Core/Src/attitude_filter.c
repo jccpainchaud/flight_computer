@@ -11,8 +11,13 @@ void attitude_filter_init(attitude_filter_t *filter, float alpha) {
 }
 
 void attitude_filter_update(attitude_filter_t *filter, const icm_20948_scaled_data_t *data, float dt) {
-	// Gyro integration
-	Quaternion q_dot = quat_derivative(filter->q, data->x_gyro, data->y_gyro, data->z_gyro);
+	// Gyro integration (convert deg/s -> rad/s first)
+	const float deg2rad = (float)M_PI / 180.0f;
+	float gx = data->x_gyro * deg2rad;
+	float gy = data->y_gyro * deg2rad;
+	float gz = data->z_gyro * deg2rad;
+
+	Quaternion q_dot = quat_derivative(filter->q, gx, gy, gz);
 	Quaternion quat_gyro = quat_add(filter->q, quat_multiply_scalar(q_dot, dt));
 	quat_normalize(&quat_gyro);
 
