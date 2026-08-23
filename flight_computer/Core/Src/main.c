@@ -80,6 +80,8 @@ float pitch;
 float roll;
 float yaw;
 
+float altitude;
+
 volatile uint32_t system_time_ms = 0;
 volatile uint32_t last_time_ms = 0;
 
@@ -150,6 +152,7 @@ int main(void)
 	  attitude_filter_get_euler(&filter, &roll, &pitch, &yaw);
 
 	  bmp_280_read_data(&baro_data);
+	  altitude = bmp_280_get_relative_altitude(&baro_data);
 
   }
   /* USER CODE END 3 */
